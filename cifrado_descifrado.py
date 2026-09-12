@@ -161,14 +161,8 @@ def chi_cuadrada(texto: str, tabla_frecuencias: dict) -> float:
 
     return chi2 / total
 
-
+# 18
 def descifrado_automatico(texto: str, alfabeto: list) -> dict:
-    """
-    Prueba Atbash y TODOS los desplazamientos posibles de César, para
-    CADA idioma disponible en FREQ_POR_IDIOMA, y regresa SOLO la mejor
-    combinación (idioma, método, módulo). El humano nunca elige nada:
-    el sistema decide con base en la estadística del idioma.
-    """
     opciones = []
     n = len(alfabeto)
 
@@ -198,7 +192,7 @@ def descifrado_automatico(texto: str, alfabeto: list) -> dict:
             ganadora = opcion
     return ganadora
 
-# 18
+# 19
 TONO_AZUL = "#9dcbfa"
 TONO_NARANJA = "#feb072"
 
@@ -208,12 +202,11 @@ st.set_page_config(
     layout="wide",
 )
 
-# 19
+# 20
 if "conjunto_activo" not in st.session_state:
     st.session_state["conjunto_activo"] = CONJUNTOS_BASE["Abecedario (español)"]
 if "conjunto_borrador" not in st.session_state:
     st.session_state["conjunto_borrador"] = st.session_state["conjunto_activo"]
-# 20
 if "conjunto_propio" not in st.session_state:
     st.session_state["conjunto_propio"] = CONJUNTOS_BASE["Abecedario (español)"]
 
