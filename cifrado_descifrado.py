@@ -120,6 +120,7 @@ def contar_simbolos_ajenos(texto: str, alfabeto: list) -> int:
 
 # 15
 FREQ_OTROS = 0.5
+LARGO_MINIMO_CONFIABLE = 15
 
 
 def chi_cuadrada(texto: str, tabla_frecuencias: dict) -> float:
@@ -130,7 +131,7 @@ def chi_cuadrada(texto: str, tabla_frecuencias: dict) -> float:
     total = len(considerados)
 
     # 16
-    if total < 15:
+    if total == 0:
         return float('inf')
 
     # 17
@@ -333,23 +334,14 @@ with col_contenido:
         corrimiento = None
         if metodo == "César":
             # 28
-            tope = len(alfabeto) - 1
-            if tope < 1:
-                tope = 1
             if "corrimiento" in st.session_state:
                 guardado = int(st.session_state["corrimiento"])
                 if guardado < 1:
                     guardado = 1
-                if guardado > tope:
-                    guardado = tope
                 st.session_state["corrimiento"] = guardado
-            if tope < 3:
-                inicial = tope
-            else:
-                inicial = 3
             corrimiento = st.number_input(
                 "Desplazamiento",
-                min_value=1, max_value=tope, value=inicial,
+                min_value=1, value=3, step=1,
                 key="corrimiento",
             )
 
@@ -391,13 +383,21 @@ with col_contenido:
                     etiqueta_modulo = f" (módulo {ganador['modulo']})"
                 else:
                     etiqueta_modulo = ""
+                caracteres = 0
+                for c in mensaje_cifrado:
+                    if not c.isspace():
+                        caracteres = caracteres + 1
                 if ganador['score'] == float('inf'):
                     st.warning(
-                        "El texto es demasiado corto o no está escrito con el "
-                        "alfabeto definido, así que no se puede descifrar "
-                        "de forma confiable."
+                        "El texto está vacío o no contiene caracteres que se "
+                        "puedan analizar."
                     )
                 else:
+                    if caracteres < LARGO_MINIMO_CONFIABLE:
+                        st.warning(
+                            "El texto es muy corto, así que el método, el módulo "
+                            "y el mensaje mostrado podrían no ser correctos."
+                        )
                     st.success(
                         f"Idioma detectado: {ganador['idioma']} | "
                         f"Método: {ganador['metodo']}{etiqueta_modulo}"
