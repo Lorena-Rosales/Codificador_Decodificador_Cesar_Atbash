@@ -366,7 +366,7 @@ with col_contenido:
                 else:
                     resultado = transformar_b(mensaje_claro, alfabeto)
                 st.success("Texto cifrado:")
-                st.code(resultado)
+                st.code(resultado, language=None)
 
                 fuera = contar_externos(mensaje_claro, alfabeto)
                 if fuera:
@@ -413,7 +413,7 @@ with col_contenido:
                         f"Método: {ganador['metodo']}{etiqueta_modulo}"
                     )
                     st.write("**Texto descifrado:**")
-                    st.code(ganador['texto'])
+                    st.code(ganador['texto'], language=None)
 
 st.markdown('<div class="banda banda-footer"></div>', unsafe_allow_html=True)
 
