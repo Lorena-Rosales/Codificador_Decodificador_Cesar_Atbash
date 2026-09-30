@@ -6,13 +6,13 @@ import streamlit as st
 # 1
 
 # 2
-ASCII_IMPRIMIBLE = ""
+CONJUNTO_B = ""
 for codigo in range(32, 127):
-    ASCII_IMPRIMIBLE = ASCII_IMPRIMIBLE + chr(codigo)
+    CONJUNTO_B = CONJUNTO_B + chr(codigo)
 
-CONJUNTOS_BASE = {
+PREDEFINIDOS = {
     "Abecedario (español)": "aábcdeéfghiíjklmnñoópqrstuúüvwxyz",    # 3
-    "ASCII imprimible": ASCII_IMPRIMIBLE, # 4
+    "ASCII imprimible": CONJUNTO_B, # 4
 }
 
 # 5
@@ -46,27 +46,26 @@ FREQ_POR_IDIOMA = {
 }
 
 # 6
-CATEGORIAS_OCULTAS = ('Mn', 'Me', 'Cf', 'Cc')
+EXCLUIDOS = ('Mn', 'Me', 'Cf', 'Cc')
 
 # 7
-def construir_alfabeto(cadena: str) -> list:
+def preparar_conjunto(cadena: str) -> list:
     registrados = []
     for c in cadena:
-        if unicodedata.category(c) in CATEGORIAS_OCULTAS: # 8
+        if unicodedata.category(c) in EXCLUIDOS: # 8
             continue
         if c not in registrados:
             registrados.append(c)
     return registrados
 
-# 9
-def _tiene_mayusculas(alfabeto: list) -> bool:
+def _perfil_estricto(alfabeto: list) -> bool:
     for c in alfabeto:
         if c.isupper():
             return True
     return False
 
-
-def _indice_en_alfabeto(c: str, alfabeto: list, estricto: bool = False):
+# 9
+def _ubicar(c: str, alfabeto: list, estricto: bool = False):
     if c in alfabeto:
         return alfabeto.index(c), False
     if not estricto:
@@ -76,7 +75,7 @@ def _indice_en_alfabeto(c: str, alfabeto: list, estricto: bool = False):
     return None, False
 
 
-def _restaurar_caso(caracter: str, era_mayuscula: bool) -> str:
+def _ajustar_forma(caracter: str, era_mayuscula: bool) -> str:
     if era_mayuscula:
         return caracter.upper()
     return caracter
@@ -84,46 +83,46 @@ def _restaurar_caso(caracter: str, era_mayuscula: bool) -> str:
 
 
 # 10
-def cesar_cifrar(texto: str, corrimiento: int, alfabeto: list) -> str:
-    estricto = _tiene_mayusculas(alfabeto)
+def transformar_a(texto: str, paso: int, alfabeto: list) -> str:
+    estricto = _perfil_estricto(alfabeto)
     n = len(alfabeto)
     resultado = []
     for c in texto: # 11
-        idx, era_may = _indice_en_alfabeto(c, alfabeto, estricto)
+        idx, era_may = _ubicar(c, alfabeto, estricto)
         if idx is None:
             resultado.append(c)  # 12
         else:
-            nuevo = alfabeto[(idx + corrimiento) % n]
-            resultado.append(_restaurar_caso(nuevo, era_may))
+            nuevo = alfabeto[(idx + paso) % n]
+            resultado.append(_ajustar_forma(nuevo, era_may))
     return ''.join(resultado)
 
 
-def cesar_descifrar(texto: str, corrimiento: int, alfabeto: list) -> str:
-    return cesar_cifrar(texto, -corrimiento, alfabeto)
+def revertir_a(texto: str, paso: int, alfabeto: list) -> str:
+    return transformar_a(texto, -paso, alfabeto)
 
 
 # 13
-def atbash(texto: str, alfabeto: list) -> str:
-    estricto = _tiene_mayusculas(alfabeto)
+def transformar_b(texto: str, alfabeto: list) -> str:
+    estricto = _perfil_estricto(alfabeto)
     n = len(alfabeto)
     resultado = []
     for c in texto:
-        idx, era_may = _indice_en_alfabeto(c, alfabeto, estricto)
+        idx, era_may = _ubicar(c, alfabeto, estricto)
         if idx is None:
             resultado.append(c)
         else:
             nuevo = alfabeto[n - 1 - idx]
-            resultado.append(_restaurar_caso(nuevo, era_may))
+            resultado.append(_ajustar_forma(nuevo, era_may))
     return ''.join(resultado)
 
 # 14
-def contar_simbolos_ajenos(texto: str, alfabeto: list) -> int:
-    estricto = _tiene_mayusculas(alfabeto)
+def contar_externos(texto: str, alfabeto: list) -> int:
+    estricto = _perfil_estricto(alfabeto)
     ajenos = 0
     for c in texto:
         if c.isspace():
             continue
-        idx, era_may = _indice_en_alfabeto(c, alfabeto, estricto)
+        idx, era_may = _ubicar(c, alfabeto, estricto)
         if idx is None:
             ajenos = ajenos + 1
     return ajenos
@@ -131,10 +130,10 @@ def contar_simbolos_ajenos(texto: str, alfabeto: list) -> int:
 
 # 15
 FREQ_OTROS = 0.5
-LARGO_MINIMO_CONFIABLE = 15
+UMBRAL_MUESTRA = 15
 
 
-def chi_cuadrada(texto: str, tabla_frecuencias: dict) -> float:
+def calcular_puntaje(texto: str, tabla: dict) -> float:
     considerados = []
     for c in texto.lower():
         if not c.isspace():
@@ -149,7 +148,7 @@ def chi_cuadrada(texto: str, tabla_frecuencias: dict) -> float:
     conteo = {}
     otros = 0
     for c in considerados:
-        if c in tabla_frecuencias:
+        if c in tabla:
             if c in conteo:
                 conteo[c] = conteo[c] + 1
             else:
@@ -158,7 +157,7 @@ def chi_cuadrada(texto: str, tabla_frecuencias: dict) -> float:
             otros = otros + 1
 
     chi2 = 0.0
-    for letra, freq_esperada in tabla_frecuencias.items():
+    for letra, freq_esperada in tabla.items():
         if letra in conteo:
             observado = conteo[letra]
         else:
@@ -174,28 +173,28 @@ def chi_cuadrada(texto: str, tabla_frecuencias: dict) -> float:
     return chi2 / total
 
 # 18
-def descifrado_automatico(texto: str, alfabeto: list) -> dict:
+def resolver(texto: str, alfabeto: list) -> dict:
     opciones = []
     n = len(alfabeto)
 
     for idioma, tabla in FREQ_POR_IDIOMA.items():
-        resultado_atbash = atbash(texto, alfabeto)
+        resultado_atbash = transformar_b(texto, alfabeto)
         opciones.append({
             'idioma': idioma,
             'metodo': 'Atbash',
             'modulo': None,
             'texto': resultado_atbash,
-            'score': chi_cuadrada(resultado_atbash, tabla)
+            'score': calcular_puntaje(resultado_atbash, tabla)
         })
 
         for d in range(1, n):
-            resultado = cesar_descifrar(texto, d, alfabeto)
+            resultado = revertir_a(texto, d, alfabeto)
             opciones.append({
                 'idioma': idioma,
                 'metodo': 'César',
                 'modulo': d,
                 'texto': resultado,
-                'score': chi_cuadrada(resultado, tabla)
+                'score': calcular_puntaje(resultado, tabla)
             })
 
     ganadora = opciones[0]
@@ -216,11 +215,11 @@ st.set_page_config(
 
 # 20
 if "conjunto_activo" not in st.session_state:
-    st.session_state["conjunto_activo"] = CONJUNTOS_BASE["Abecedario (español)"]
+    st.session_state["conjunto_activo"] = PREDEFINIDOS["Abecedario (español)"]
 if "conjunto_borrador" not in st.session_state:
     st.session_state["conjunto_borrador"] = st.session_state["conjunto_activo"]
 if "conjunto_propio" not in st.session_state:
-    st.session_state["conjunto_propio"] = CONJUNTOS_BASE["Abecedario (español)"]
+    st.session_state["conjunto_propio"] = PREDEFINIDOS["Abecedario (español)"]
 
 # 21
 def _cambiar_preset():
@@ -230,8 +229,8 @@ def _cambiar_preset():
     if anterior == "Personalizado": # 22
         st.session_state["conjunto_propio"] = st.session_state["conjunto_borrador"]
 
-    if nuevo in CONJUNTOS_BASE:
-        st.session_state["conjunto_borrador"] = CONJUNTOS_BASE[nuevo]
+    if nuevo in PREDEFINIDOS:
+        st.session_state["conjunto_borrador"] = PREDEFINIDOS[nuevo]
     else:
         st.session_state["conjunto_borrador"] = st.session_state["conjunto_propio"]
 
@@ -239,7 +238,7 @@ def _cambiar_preset():
 
 # 23
 @st.dialog("Configurar charset", width="large")
-def dialogo_charset():
+def dialogo_conjunto():
 
     st.caption(
         "Este conjunto es la pauta de todo el sistema: el cifrado y el "
@@ -248,7 +247,7 @@ def dialogo_charset():
 
     st.radio(
         "Punto de partida",
-        list(CONJUNTOS_BASE.keys()) + ["Personalizado"],
+        list(PREDEFINIDOS.keys()) + ["Personalizado"],
         horizontal=True,
         key="opcion_elegida",
         on_change=_cambiar_preset,
@@ -264,7 +263,7 @@ def dialogo_charset():
                  "El orden importa: define el corrimiento de César y el espejo de Atbash.",
         )
 
-    simbolos_del_borrador = construir_alfabeto(st.session_state["conjunto_borrador"])
+    simbolos_del_borrador = preparar_conjunto(st.session_state["conjunto_borrador"])
     # 24
     if len(simbolos_del_borrador) >= 2:
         st.caption(
@@ -276,7 +275,7 @@ def dialogo_charset():
     col_guardar, col_cancelar = st.columns(2)
     with col_guardar:
         if st.button("Guardar", type="primary", use_container_width=True):
-            if len(construir_alfabeto(st.session_state["conjunto_borrador"])) >= 2:
+            if len(preparar_conjunto(st.session_state["conjunto_borrador"])) >= 2:
                 st.session_state["conjunto_activo"] = st.session_state["conjunto_borrador"]
                 st.rerun()
     with col_cancelar:
@@ -284,15 +283,15 @@ def dialogo_charset():
             st.rerun()
 
 # 25
-def nombre_charset_activo() -> str:
+def etiqueta_conjunto() -> str:
     actual = st.session_state["conjunto_activo"]
-    for nombre, valor in CONJUNTOS_BASE.items():
+    for nombre, valor in PREDEFINIDOS.items():
         if actual == valor:
             return nombre
     return "Personalizado"
 
 # 26
-def fila_configuracion_alfabeto(contexto: str):
+def fila_configuracion(contexto: str):
     st.markdown(
         '<div class="etiqueta-charset">Configuración del alfabeto actual</div>',
         unsafe_allow_html=True,
@@ -300,7 +299,7 @@ def fila_configuracion_alfabeto(contexto: str):
     col_campo, col_boton = st.columns([2, 1], vertical_alignment="center")
     with col_campo:
         st.markdown(
-            f'<div class="vista-charset">{html.escape(nombre_charset_activo())}</div>',
+            f'<div class="vista-charset">{html.escape(etiqueta_conjunto())}</div>',
             unsafe_allow_html=True,
         )
     with col_boton:
@@ -310,13 +309,13 @@ def fila_configuracion_alfabeto(contexto: str):
             use_container_width=True,
         ):
             # 27
-            activo = nombre_charset_activo()
+            activo = etiqueta_conjunto()
             st.session_state["conjunto_borrador"] = st.session_state["conjunto_activo"]
             st.session_state["opcion_elegida"] = activo
             st.session_state["opcion_anterior"] = activo
             if activo == "Personalizado":
                 st.session_state["conjunto_propio"] = st.session_state["conjunto_activo"]
-            dialogo_charset()
+            dialogo_conjunto()
 
 st.markdown('<div class="banda banda-header"></div>', unsafe_allow_html=True)
 
@@ -332,7 +331,7 @@ with col_contenido:
         unsafe_allow_html=True,
     )
 
-    alfabeto = construir_alfabeto(st.session_state["conjunto_activo"])
+    alfabeto = preparar_conjunto(st.session_state["conjunto_activo"])
 
     tab_cifrar, tab_descifrar = st.tabs(["Cifrar", "Descifrar"])
 
@@ -342,34 +341,34 @@ with col_contenido:
             "Método de cifrado", ["César", "Atbash"], key="metodo_elegido"
         )
 
-        corrimiento = None
+        paso = None
         if metodo == "César":
             # 28
-            if "corrimiento" in st.session_state:
-                guardado = int(st.session_state["corrimiento"])
+            if "paso" in st.session_state:
+                guardado = int(st.session_state["paso"])
                 if guardado < 1:
                     guardado = 1
-                st.session_state["corrimiento"] = guardado
-            corrimiento = st.number_input(
+                st.session_state["paso"] = guardado
+            paso = st.number_input(
                 "Desplazamiento",
                 min_value=1, value=3, step=1,
-                key="corrimiento",
+                key="paso",
             )
 
-        fila_configuracion_alfabeto("cifrar")
+        fila_configuracion("cifrar")
 
         if st.button("Cifrar", type="primary", key="btn_cifrar"):
             if not alfabeto:
                 st.error("Define primero un conjunto de caracteres válido.")
             else:
                 if metodo == "César":
-                    resultado = cesar_cifrar(mensaje_claro, corrimiento, alfabeto)
+                    resultado = transformar_a(mensaje_claro, paso, alfabeto)
                 else:
-                    resultado = atbash(mensaje_claro, alfabeto)
+                    resultado = transformar_b(mensaje_claro, alfabeto)
                 st.success("Texto cifrado:")
                 st.code(resultado)
 
-                fuera = contar_simbolos_ajenos(mensaje_claro, alfabeto)
+                fuera = contar_externos(mensaje_claro, alfabeto)
                 if fuera:
                     st.info(
                         f"{fuera} carácter(es) no pertenecen al alfabeto definido "
@@ -383,13 +382,13 @@ with col_contenido:
         )
         mensaje_cifrado = st.text_area("Texto cifrado a analizar", key="mensaje_cifrado")
 
-        fila_configuracion_alfabeto("descifrar")
+        fila_configuracion("descifrar")
 
         if st.button("Descifrar automáticamente", type="primary", key="btn_descifrar"):
             if not alfabeto:
                 st.error("Define primero un conjunto de caracteres válido.")
             else:
-                ganador = descifrado_automatico(mensaje_cifrado, alfabeto)
+                ganador = resolver(mensaje_cifrado, alfabeto)
                 if ganador['modulo']:
                     etiqueta_modulo = f" (módulo {ganador['modulo']})"
                 else:
@@ -404,7 +403,7 @@ with col_contenido:
                         "puedan analizar."
                     )
                 else:
-                    if caracteres < LARGO_MINIMO_CONFIABLE:
+                    if caracteres < UMBRAL_MUESTRA:
                         st.warning(
                             "El texto es muy corto, así que el método, el módulo "
                             "y el mensaje mostrado podrían no ser correctos."
@@ -422,7 +421,6 @@ st.markdown('<div class="banda banda-footer"></div>', unsafe_allow_html=True)
 st.markdown(
     f"""
     <style>
-    /* ---------- Paleta ---------- */
     :root {{
         --azul: {TONO_AZUL};
         --naranja: {TONO_NARANJA};
@@ -438,7 +436,6 @@ st.markdown(
         max-width: 1500px;
     }}
 
-    /* ---------- Botones ---------- */
     button[kind="primary"], [data-testid="stBaseButton-primary"] {{
         background-color: var(--naranja) !important;
         border: 2px solid var(--naranja) !important;
@@ -461,7 +458,6 @@ st.markdown(
         color: #0c2c4d !important;
     }}
 
-    /* ---------- Pestañas ---------- */
     [data-testid="stTabs"] [role="tablist"] {{
         gap: .5rem;
         border-bottom: none !important;
@@ -483,13 +479,11 @@ st.markdown(
     }}
     .react-aria-SelectionIndicator {{ display: none !important; }}
 
-    /* ---------- Campos ---------- */
     input:focus, textarea:focus {{
         border-color: var(--azul) !important;
         box-shadow: 0 0 0 2px {TONO_AZUL}66 !important;
     }}
 
-    /* ---------- Flechas del campo de corrimiento ---------- */
     [data-testid="stNumberInputStepUp"] svg,
     [data-testid="stNumberInputStepDown"] svg {{
         display: none !important;
@@ -513,7 +507,6 @@ st.markdown(
         color: #4a2c0c !important;
     }}
 
-    /* ---------- Cajas de resultado ---------- */
     [data-testid="stCode"], pre {{
         border: 2px solid var(--azul) !important;
         border-radius: 12px !important;
@@ -543,7 +536,6 @@ st.markdown(
         display: none !important;
     }}
 
-    /* ---------- Franjas de encabezado y pie ---------- */
     .banda {{
         width: 100vw;
         margin-left: calc(50% - 50vw);
@@ -582,7 +574,6 @@ st.markdown(
         object-fit: contain;
     }}
 
-    /* ---------- Encabezado ---------- */
     .titulo-app {{
         font-size: 2.1rem;
         font-weight: 800;
@@ -593,7 +584,6 @@ st.markdown(
     .titulo-app span {{ color: var(--naranja); }}
     .subtitulo-app {{ color: #5b6b7c; margin-bottom: 1.2rem; }}
 
-    /* ---------- Modal de charset ---------- */
     div[role="radiogroup"] {{ gap: .6rem; }}
     div[role="radiogroup"] > label {{
         border: 2px solid var(--azul);
@@ -616,7 +606,7 @@ st.markdown(
         background-color: #f8fbff !important;
         overflow-y: auto !important;
     }}
-    /* ---------- Campo de solo lectura del charset vigente ---------- */
+
     .etiqueta-charset {{
         font-size: .875rem;
         color: #5b6b7c;
