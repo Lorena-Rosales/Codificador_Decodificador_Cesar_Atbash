@@ -59,12 +59,20 @@ def construir_alfabeto(cadena: str) -> list:
     return registrados
 
 # 9
-def _indice_en_alfabeto(c: str, alfabeto: list):
+def _tiene_mayusculas(alfabeto: list) -> bool:
+    for c in alfabeto:
+        if c.isupper():
+            return True
+    return False
+
+
+def _indice_en_alfabeto(c: str, alfabeto: list, estricto: bool = False):
     if c in alfabeto:
         return alfabeto.index(c), False
-    bajo = c.lower()
-    if bajo != c and bajo in alfabeto:
-        return alfabeto.index(bajo), True
+    if not estricto:
+        bajo = c.lower()
+        if bajo != c and bajo in alfabeto:
+            return alfabeto.index(bajo), True
     return None, False
 
 
@@ -77,10 +85,11 @@ def _restaurar_caso(caracter: str, era_mayuscula: bool) -> str:
 
 # 10
 def cesar_cifrar(texto: str, corrimiento: int, alfabeto: list) -> str:
+    estricto = _tiene_mayusculas(alfabeto)
     n = len(alfabeto)
     resultado = []
     for c in texto: # 11
-        idx, era_may = _indice_en_alfabeto(c, alfabeto)
+        idx, era_may = _indice_en_alfabeto(c, alfabeto, estricto)
         if idx is None:
             resultado.append(c)  # 12
         else:
@@ -95,10 +104,11 @@ def cesar_descifrar(texto: str, corrimiento: int, alfabeto: list) -> str:
 
 # 13
 def atbash(texto: str, alfabeto: list) -> str:
+    estricto = _tiene_mayusculas(alfabeto)
     n = len(alfabeto)
     resultado = []
     for c in texto:
-        idx, era_may = _indice_en_alfabeto(c, alfabeto)
+        idx, era_may = _indice_en_alfabeto(c, alfabeto, estricto)
         if idx is None:
             resultado.append(c)
         else:
@@ -108,11 +118,12 @@ def atbash(texto: str, alfabeto: list) -> str:
 
 # 14
 def contar_simbolos_ajenos(texto: str, alfabeto: list) -> int:
+    estricto = _tiene_mayusculas(alfabeto)
     ajenos = 0
     for c in texto:
         if c.isspace():
             continue
-        idx, era_may = _indice_en_alfabeto(c, alfabeto)
+        idx, era_may = _indice_en_alfabeto(c, alfabeto, estricto)
         if idx is None:
             ajenos = ajenos + 1
     return ajenos
